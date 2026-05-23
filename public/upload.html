@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>vocabulary-helper · upload queue</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Upload queue</h1>
+      <nav><a href="/">← Search</a></nav>
+    </header>
+
+    <main>
+      <div class="actions">
+        <button id="upload-btn" disabled>Upload selected to WordUp</button>
+        <button id="delete-btn" class="danger" disabled>Delete selected</button>
+        <span id="selection-count" class="row__preview"></span>
+      </div>
+
+      <section id="status" class="status" hidden></section>
+
+      <section id="queue-region"></section>
+    </main>
+
+    <script src="/upload.js"></script>
+  </body>
+</html>

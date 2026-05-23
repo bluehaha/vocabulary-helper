@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>vocabulary-helper · search</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Search</h1>
+      <nav><a href="/upload">Upload queue →</a></nav>
+    </header>
+
+    <main>
+      <form id="search-form" autocomplete="off">
+        <input
+          id="search-input"
+          type="text"
+          name="word"
+          placeholder="Type a word and press Enter"
+          autofocus
+          required
+        />
+        <button type="submit">Look up</button>
+      </form>
+
+      <section id="status" class="status" hidden></section>
+      <section id="result" class="result" hidden></section>
+    </main>
+
+    <script src="/search.js"></script>
+  </body>
+</html>
