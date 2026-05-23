@@ -2,6 +2,20 @@ const axios = require("axios");
 
 const ENDPOINT = "https://api.wordup.com.tw/api/v1/cards";
 
+const POS_ABBREV = {
+  verb: "v",
+  noun: "n",
+  adjective: "adj",
+  adverb: "adv",
+  preposition: "prep",
+  pronoun: "pron",
+  conjunction: "conj",
+  determiner: "det",
+  exclamation: "excl",
+};
+
+const abbreviatePos = (pos) => POS_ABBREV[pos] || pos;
+
 class ConfigError extends Error {
   constructor(message) {
     super(message);
@@ -42,7 +56,20 @@ function buildPayload(entry, deckId) {
   const translations = [
     ...new Set(
       (entry.definition || [])
-        .map((d) => (d.translation || "").trim())
+        .map((d) => {
+          const text = (d.text || "").trim();
+          if (!text) return "";
+          const pos = (d.pos || "").trim();
+          return pos ? `(${abbreviatePos(pos)}) ${text}` : text;
+        })
+        .filter(Boolean)
+    ),
+  ];
+
+  const wordTypes = [
+    ...new Set(
+      (entry.definition || [])
+        .map((d) => (d.pos || "").trim())
         .filter(Boolean)
     ),
   ];
@@ -51,9 +78,7 @@ function buildPayload(entry, deckId) {
   for (const def of entry.definition || []) {
     for (const ex of def.example || []) {
       const text = (ex.text || "").trim();
-      const trans = (ex.translation || "").trim();
       if (text) sentences.push(text);
-      if (trans) sentences.push(trans);
     }
   }
 
@@ -64,7 +89,7 @@ function buildPayload(entry, deckId) {
         {
           translations,
           sentences,
-          word_types: [],
+          word_types: wordTypes,
           notes: [],
           images: [],
           synonyms: [],
