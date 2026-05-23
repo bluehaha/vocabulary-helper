@@ -1,0 +1,5 @@
+.env
+.obsidian/
+node_modules/
+data/history.json
+
