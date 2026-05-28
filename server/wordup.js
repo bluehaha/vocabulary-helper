@@ -16,6 +16,33 @@ const POS_ABBREV = {
 
 const abbreviatePos = (pos) => POS_ABBREV[pos] || pos;
 
+const findVerbForm = (verbs, type) => {
+  for (const v of verbs || []) {
+    if (v && v.type === type) {
+      const text = (v.text || "").trim();
+      if (text) return text;
+    }
+  }
+  return undefined;
+};
+
+const isRegularPast = (base, past) => {
+  const b = base.toLowerCase();
+  const p = past.toLowerCase();
+  if (p === b + "ed") return true;
+  if (b.endsWith("e") && p === b + "d") return true;
+  if (b.length >= 2 && /[bcdfghjklmnpqrstvwxz]y$/.test(b) && p === b.slice(0, -1) + "ied") return true;
+  if (
+    b.length <= 5 &&
+    /[aeiou][bcdfghjklmnpqrstvz]$/.test(b) &&
+    !/[aeiou]{2}[bcdfghjklmnpqrstvz]$/.test(b) &&
+    p === b + b.slice(-1) + "ed"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 class ConfigError extends Error {
   constructor(message) {
     super(message);
@@ -79,6 +106,15 @@ function buildPayload(entry, deckId) {
     for (const ex of def.example || []) {
       const text = (ex.text || "").trim();
       if (text) sentences.push(text);
+    }
+  }
+
+  if ((entry.pos || []).includes("verb")) {
+    const base = findVerbForm(entry.verbs, "Plain form");
+    const past = findVerbForm(entry.verbs, "Past tense");
+    if (base && past && !isRegularPast(base, past)) {
+      const pp = findVerbForm(entry.verbs, "Past participle") || past;
+      translations.unshift(`${past} | ${pp}`);
     }
   }
 
