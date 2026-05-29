@@ -9,7 +9,7 @@ const history = require("./history");
 const { uploadCard, ConfigError, UploadError } = require("./wordup");
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
-const HOST = "127.0.0.1";
+const HOST = process.env.BIND_HOST || "127.0.0.1";
 const LANG = process.env.DICTIONARY_LANG || "en-tw";
 
 const app = express();
