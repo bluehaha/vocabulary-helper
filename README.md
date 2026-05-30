@@ -75,3 +75,11 @@ openspec/    Change proposals and specs
 - Cambridge scraping relies on the live HTML; markup changes upstream may
   require updates to `server/cambridge.js`.
 - History is plain JSON on disk — back it up or delete it freely.
+
+## Deployment
+
+Production deployment to an Oracle Cloud VM is automated via GitHub Actions
+(`.github/workflows/deploy.yml`). See:
+
+- Design: `docs/superpowers/specs/2026-05-29-oracle-vm-deploy-design.md`
+- One-time VM setup: `deploy/README.md`
