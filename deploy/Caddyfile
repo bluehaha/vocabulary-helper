@@ -1,0 +1,6 @@
+DOMAIN_PLACEHOLDER {
+    basicauth {
+        BASICAUTH_USER BASICAUTH_HASH
+    }
+    reverse_proxy app:3000
+}

@@ -1,0 +1,37 @@
+services:
+  app:
+    image: ghcr.io/OWNER/vocabulary-helper:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      WORDUP_ACCESS_TOKEN: ${WORDUP_ACCESS_TOKEN}
+      WORDUP_CLIENT: ${WORDUP_CLIENT}
+      WORDUP_UID: ${WORDUP_UID}
+      WORDUP_DECK_ID: ${WORDUP_DECK_ID}
+      DICTIONARY_LANG: ${DICTIONARY_LANG:-en-tw}
+      PORT: "3000"
+      BIND_HOST: "0.0.0.0"
+    volumes:
+      - vocab-data:/app/data
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  vocab-data:
+  caddy_data:
+  caddy_config:
