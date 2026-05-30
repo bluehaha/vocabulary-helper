@@ -12,10 +12,11 @@ repository owner.
 Environment variables expected at `docker compose up` time:
 
 - `IMAGE_TAG` — the image tag to pull (commit SHA in deploys; `latest` for
-  manual runs on the VM).
+  manual runs on the VM). Exported by the deploy workflow via SSH.
 - `WORDUP_ACCESS_TOKEN`, `WORDUP_CLIENT`, `WORDUP_UID`, `WORDUP_DECK_ID` —
-  WordUp API credentials.
-- `DICTIONARY_LANG` — optional, defaults to `en-tw`.
+  WordUp API credentials. Read from `/opt/vocabulary-helper/.env`, which
+  Docker Compose auto-loads. Maintained on the VM, not in GitHub secrets.
+- `DICTIONARY_LANG` — optional, defaults to `en-tw`. Also lives in `.env`.
 
 ## Caddyfile
 
@@ -70,7 +71,28 @@ sudo mkdir -p /opt/vocabulary-helper
 sudo chown deploy:deploy /opt/vocabulary-helper
 ```
 
-### 5. Generate basic-auth hash and fill in the Caddyfile
+### 5. Create `/opt/vocabulary-helper/.env`
+
+As the `deploy` user, create `/opt/vocabulary-helper/.env` with the WordUp
+credentials. Docker Compose auto-loads this file on `docker compose up`.
+
+```sh
+cat > /opt/vocabulary-helper/.env <<'EOF'
+WORDUP_ACCESS_TOKEN=...
+WORDUP_CLIENT=...
+WORDUP_UID=...
+WORDUP_DECK_ID=...
+# Optional, defaults to en-tw
+# DICTIONARY_LANG=en-tw
+EOF
+chmod 600 /opt/vocabulary-helper/.env
+```
+
+The deploy workflow fails fast if this file is missing. To rotate WordUp
+credentials later: SSH in, edit `.env`, then run `docker compose up -d` from
+`/opt/vocabulary-helper/`.
+
+### 6. Generate basic-auth hash and fill in the Caddyfile
 
 Generate a bcrypt hash of your chosen password:
 
@@ -92,7 +114,7 @@ on the VM, comment out the `Caddyfile` line in the workflow's `scp` source list
 during the scp-prep step. The hash is not sensitive but the user can be
 anything you like.
 
-### 6. ghcr.io login on the VM
+### 7. ghcr.io login on the VM
 
 Create a GitHub Personal Access Token with `read:packages` scope. On the VM
 as `deploy`:
@@ -101,7 +123,7 @@ as `deploy`:
 echo <token> | docker login ghcr.io -u <github-username> --password-stdin
 ```
 
-### 7. GitHub repo secrets
+### 8. GitHub repo secrets
 
 Add these in **Settings → Secrets and variables → Actions**:
 
@@ -112,12 +134,11 @@ Add these in **Settings → Secrets and variables → Actions**:
 | `SSH_KEY` | private key for the `deploy` user |
 | `DEPLOY_DOMAIN` | `vocab.example.com` (used by the health check) |
 | `HEALTHCHECK_AUTH` | base64 of `user:password` (`echo -n 'user:password' \| base64`) |
-| `WORDUP_ACCESS_TOKEN` | WordUp API access token |
-| `WORDUP_CLIENT` | WordUp API `client` header |
-| `WORDUP_UID` | WordUp API `uid` header |
-| `WORDUP_DECK_ID` | WordUp deck ID |
 
-### 8. First deploy
+WordUp credentials are read from `/opt/vocabulary-helper/.env` on the VM
+(step 5), not from GitHub secrets.
+
+### 9. First deploy
 
 Push a commit to `main` (or trigger the workflow manually via the Actions
 tab). On success:

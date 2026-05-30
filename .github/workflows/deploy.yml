@@ -69,24 +69,20 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: IMAGE_TAG,WORDUP_ACCESS_TOKEN,WORDUP_CLIENT,WORDUP_UID,WORDUP_DECK_ID
+          envs: IMAGE_TAG
           script: |
             set -e
             cd /opt/vocabulary-helper
+            if [ ! -f .env ]; then
+              echo "Missing /opt/vocabulary-helper/.env on VM. See deploy/README.md." >&2
+              exit 1
+            fi
             export IMAGE_TAG=$IMAGE_TAG
-            export WORDUP_ACCESS_TOKEN=$WORDUP_ACCESS_TOKEN
-            export WORDUP_CLIENT=$WORDUP_CLIENT
-            export WORDUP_UID=$WORDUP_UID
-            export WORDUP_DECK_ID=$WORDUP_DECK_ID
             docker compose pull app
             docker compose up -d
             docker image prune -f
         env:
           IMAGE_TAG: ${{ github.sha }}
-          WORDUP_ACCESS_TOKEN: ${{ secrets.WORDUP_ACCESS_TOKEN }}
-          WORDUP_CLIENT: ${{ secrets.WORDUP_CLIENT }}
-          WORDUP_UID: ${{ secrets.WORDUP_UID }}
-          WORDUP_DECK_ID: ${{ secrets.WORDUP_DECK_ID }}
 
       - name: Health check
         run: |
