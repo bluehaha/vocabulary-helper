@@ -78,9 +78,9 @@ jobs:
               exit 1
             fi
             export IMAGE_TAG=$IMAGE_TAG
-            docker compose pull app
-            docker compose up -d
-            docker image prune -f
+            sudo docker compose pull app
+            sudo docker compose up -d
+            sudo docker image prune -f
         env:
           IMAGE_TAG: ${{ github.sha }}
 
