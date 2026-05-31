@@ -23,6 +23,76 @@ Environment variables expected at `docker compose up` time:
 Three placeholders are filled in on the VM during one-time provisioning:
 `DOMAIN_PLACEHOLDER`, `BASICAUTH_USER`, `BASICAUTH_HASH`.
 
+## Run locally with Docker + Caddy
+
+Use this to exercise the same `app` + `caddy` topology on your machine without
+TLS, basic auth, or a real domain.
+
+### 1. Create `deploy/.env`
+
+Docker Compose auto-loads `.env` from the directory where you run
+`docker compose`. Create `deploy/.env` with WordUp credentials (or leave them
+blank if you only need lookup):
+
+```sh
+cat > deploy/.env <<'EOF'
+WORDUP_ACCESS_TOKEN=
+WORDUP_CLIENT=
+WORDUP_UID=
+WORDUP_DECK_ID=
+DICTIONARY_LANG=en-tw
+IMAGE_TAG=local
+EOF
+```
+
+### 2. Create `deploy/Caddyfile.local`
+
+```
+:80 {
+    reverse_proxy app:3000
+}
+```
+
+Local Caddy can't get a Let's Encrypt cert, so we serve plain HTTP and skip
+basic auth for convenience.
+
+### 3. Create `deploy/docker-compose.local.yml`
+
+Compose auto-merges this on top of `docker-compose.yml`, so the production
+file stays untouched:
+
+```yaml
+services:
+  app:
+    image: vocabulary-helper:local
+    build:
+      context: ..
+      dockerfile: Dockerfile
+  caddy:
+    ports: !override
+      - "8080:80"
+    volumes: !override
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+```
+
+Port 8080 avoids clashing with anything else on `:80`. `!override` replaces
+the production lists rather than appending to them.
+
+### 4. Run
+
+```sh
+cd deploy
+docker compose up --build
+```
+
+Open `http://localhost:8080/` for the search UI and
+`http://localhost:8080/upload` for the upload queue.
+
+Stop with `Ctrl-C`, or `docker compose down` to remove containers. Add `-v`
+to also wipe the `vocab-data` volume (your local lookup history).
+
 ## One-time VM provisioning
 
 Do these steps ONCE on a fresh Oracle Cloud VM. The deploy workflow assumes

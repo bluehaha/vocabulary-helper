@@ -1,0 +1,11 @@
+services:
+  app:
+    image: vocabulary-helper:local
+    build:
+      context: ..
+      dockerfile: Dockerfile
+  caddy:
+    ports:
+      - "8080:80"   # avoid clashing with anything on :80
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
