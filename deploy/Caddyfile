@@ -1,6 +1,6 @@
-DOMAIN_PLACEHOLDER {
+{$DEPLOY_DOMAIN} {
     basicauth {
-        BASICAUTH_USER BASICAUTH_HASH
+        {$BASICAUTH_USER} {$BASICAUTH_HASH}
     }
     reverse_proxy app:3000
 }

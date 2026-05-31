@@ -18,6 +18,10 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      DEPLOY_DOMAIN: ${DEPLOY_DOMAIN}
+      BASICAUTH_USER: ${BASICAUTH_USER}
+      BASICAUTH_HASH: ${BASICAUTH_HASH}
     ports:
       - "80:80"
       - "443:443"

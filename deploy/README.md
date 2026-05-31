@@ -20,8 +20,10 @@ Environment variables expected at `docker compose up` time:
 
 ## Caddyfile
 
-Three placeholders are filled in on the VM during one-time provisioning:
-`DOMAIN_PLACEHOLDER`, `BASICAUTH_USER`, `BASICAUTH_HASH`.
+Uses Caddy's `{$VAR}` substitution. `DEPLOY_DOMAIN`, `BASICAUTH_USER`, and
+`BASICAUTH_HASH` are read from `/opt/vocabulary-helper/.env` on the VM (Docker
+Compose passes them to the `caddy` container, and Caddy expands them at
+config-load time). No editing of the Caddyfile on the VM is needed.
 
 ## Run locally with Docker + Caddy
 
@@ -154,15 +156,23 @@ WORDUP_UID=...
 WORDUP_DECK_ID=...
 # Optional, defaults to en-tw
 # DICTIONARY_LANG=en-tw
+
+# Caddy site config (see step 6 for BASICAUTH_HASH)
+DEPLOY_DOMAIN=vocab.example.com
+BASICAUTH_USER=youruser
+BASICAUTH_HASH='$2a$14$...'
 EOF
 chmod 600 /opt/vocabulary-helper/.env
 ```
+
+Quote `BASICAUTH_HASH` in single quotes — bcrypt hashes contain `$` which
+Docker Compose would otherwise try to interpolate.
 
 The deploy workflow fails fast if this file is missing. To rotate WordUp
 credentials later: SSH in, edit `.env`, then run `docker compose up -d` from
 `/opt/vocabulary-helper/`.
 
-### 6. Generate basic-auth hash and fill in the Caddyfile
+### 6. Generate basic-auth hash
 
 Generate a bcrypt hash of your chosen password:
 
@@ -170,19 +180,9 @@ Generate a bcrypt hash of your chosen password:
 docker run --rm caddy:2-alpine caddy hash-password --plaintext 'your-password-here'
 ```
 
-Copy the hash. SSH to the VM as `deploy` and edit
-`/opt/vocabulary-helper/Caddyfile` (which the first deploy will have placed
-there) — replace `DOMAIN_PLACEHOLDER`, `BASICAUTH_USER`, and `BASICAUTH_HASH`
-with your real values. After future deploys overwrite the file, you'll need
-to redo this — see below for the fix.
-
-**To avoid re-editing on every deploy:** once the Caddyfile contents stabilize
-on the VM, comment out the `Caddyfile` line in the workflow's `scp` source list
-(Task 4 step 1). Or, alternative: keep the placeholders in the repo and add a
-`sed` substitution to the workflow that fills them in using
-`secrets.DEPLOY_DOMAIN`, `secrets.BASICAUTH_USER`, `secrets.BASICAUTH_HASH`
-during the scp-prep step. The hash is not sensitive but the user can be
-anything you like.
+Copy the hash into `/opt/vocabulary-helper/.env` as `BASICAUTH_HASH` (see
+step 5). Caddy reads it via `{$BASICAUTH_HASH}` at startup — no editing of
+the Caddyfile on the VM is needed, and future deploys won't clobber anything.
 
 ### 7. ghcr.io login on the VM
 
