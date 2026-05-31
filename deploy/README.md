@@ -56,7 +56,7 @@ EOF
 Local Caddy can't get a Let's Encrypt cert, so we serve plain HTTP and skip
 basic auth for convenience.
 
-### 3. Create `deploy/docker-compose.local.yml`
+### 3. Create `deploy/docker-compose.override.yml`
 
 Compose auto-merges this on top of `docker-compose.yml`, so the production
 file stays untouched:
