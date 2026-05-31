@@ -129,3 +129,33 @@ table.queue th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
 .row__time { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
 .row__status--success { color: var(--ok); }
 .row__status--failed { color: var(--error); }
+
+@media (max-width: 640px) {
+  main { padding: 0.75rem 0.75rem 2rem; }
+  .topbar { padding: 0.625rem 0.75rem; }
+  .topbar h1 { font-size: 1.125rem; }
+
+  form { flex-wrap: wrap; }
+  form button[type="submit"] { flex: 1 1 auto; }
+
+  .entry__word { font-size: 1.35rem; }
+  .def { padding: 0.625rem 0.75rem; }
+
+  .actions { flex-wrap: wrap; }
+  .actions button { flex: 1 1 100%; }
+  #selection-count { flex: 1 1 100%; text-align: center; }
+
+  table.queue th:nth-child(3),
+  table.queue td.row__time,
+  table.queue th:nth-child(4),
+  table.queue td.row__preview { display: none; }
+
+  table.queue th,
+  table.queue td { padding: 0.625rem 0.4rem; }
+  table.queue input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+  .row__word { word-break: break-word; }
+}
+
+@media (max-width: 420px) {
+  form input[type="text"] { flex: 1 1 100%; }
+}
