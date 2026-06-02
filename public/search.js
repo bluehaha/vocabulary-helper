@@ -144,6 +144,9 @@ function renderEntry(entry) {
   resultEl.querySelectorAll("button.audio").forEach((btn) => {
     btn.addEventListener("click", () => playFromButton(btn));
   });
+
+  const firstAudio = resultEl.querySelector("button.audio");
+  if (firstAudio) playFromButton(firstAudio);
 }
 
 async function lookup(word) {
@@ -153,6 +156,7 @@ async function lookup(word) {
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.status === "ok") {
       renderEntry(data.entry);
+      input.value = "";
       return;
     }
     if (res.status === 404 || data.status === "not_found") {
