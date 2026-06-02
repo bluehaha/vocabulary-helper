@@ -6,7 +6,15 @@ const cors = require("cors");
 
 const { fetchEntry } = require("./cambridge");
 const history = require("./history");
-const { uploadCard, ConfigError, UploadError } = require("./wordup");
+const {
+  uploadCard,
+  showDeck,
+  createDeck,
+  ConfigError,
+  UploadError,
+  DECK_CARD_LIMIT,
+} = require("./wordup");
+const deckStore = require("./deckStore");
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const HOST = process.env.BIND_HOST || "127.0.0.1";
@@ -73,10 +81,55 @@ app.delete("/api/history", async (req, res) => {
   }
 });
 
+function todayStamp() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}${m}${day}`;
+}
+
+async function maybeRotateDeck(deckId) {
+  const prefix = (process.env.WORDUP_DECK_NAME_PREFIX || "").trim();
+  if (!prefix) {
+    console.warn("Deck rotation skipped: WORDUP_DECK_NAME_PREFIX is not set.");
+    return;
+  }
+  try {
+    const deck = await showDeck(deckId);
+    const count = deck && typeof deck.cards_count === "number" ? deck.cards_count : null;
+    if (count === null) {
+      console.warn(`Deck rotation skipped: could not read cards_count for deck ${deckId}.`);
+      return;
+    }
+    if (count <= DECK_CARD_LIMIT) return;
+    const name = `${prefix} ${todayStamp()}`;
+    const created = await createDeck(name);
+    if (!created || !Number.isFinite(created.id)) {
+      console.warn(`Deck rotation skipped: createDeck returned no id for "${name}".`);
+      return;
+    }
+    await deckStore.setCurrentDeckId(created.id);
+    console.log(`Deck rotated: ${deckId} (${count} cards) -> ${created.id} ("${name}").`);
+  } catch (err) {
+    console.warn("Deck rotation failed:", err.message);
+  }
+}
+
 app.post("/api/upload", async (req, res) => {
   const words = Array.isArray(req.body && req.body.words) ? req.body.words : [];
   if (words.length === 0) {
     return res.status(400).json({ status: "error", message: "No words provided" });
+  }
+
+  const deckId = await deckStore.getCurrentDeckId();
+  if (!Number.isFinite(deckId)) {
+    return res.status(400).json({
+      status: "config_error",
+      message:
+        "Missing WordUp config: deckId. Set WORDUP_DECK_ID in .env or the environment.",
+      results: [],
+    });
   }
 
   const results = [];
@@ -89,7 +142,7 @@ app.post("/api/upload", async (req, res) => {
       continue;
     }
     try {
-      await uploadCard(entry);
+      await uploadCard(entry, deckId);
       results.push({ word, status: "success" });
       successful.push(word);
     } catch (err) {
@@ -116,6 +169,7 @@ app.post("/api/upload", async (req, res) => {
     } catch (err) {
       console.warn("Failed to remove successful words from history:", err.message);
     }
+    await maybeRotateDeck(deckId);
   }
 
   res.json({ status: "ok", results });

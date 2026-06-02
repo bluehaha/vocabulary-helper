@@ -1,6 +1,8 @@
 const axios = require("axios");
 
-const ENDPOINT = "https://api.wordup.com.tw/api/v1/cards";
+const CARDS_ENDPOINT = "https://api.wordup.com.tw/api/v1/cards";
+const DECKS_ENDPOINT = "https://api.wordup.com.tw/api/v1/decks";
+const DECK_CARD_LIMIT = 45;
 
 const POS_ABBREV = {
   verb: "v",
@@ -60,13 +62,12 @@ class UploadError extends Error {
   }
 }
 
-function readConfig() {
+function readAuthConfig() {
   const missing = [];
   const cfg = {
     accessToken: process.env.WORDUP_ACCESS_TOKEN,
     client: process.env.WORDUP_CLIENT,
     uid: process.env.WORDUP_UID,
-    deckId: process.env.WORDUP_DECK_ID,
   };
   for (const [k, v] of Object.entries(cfg)) {
     if (!v || !String(v).trim()) missing.push(k);
@@ -77,6 +78,26 @@ function readConfig() {
     );
   }
   return cfg;
+}
+
+function readConfig() {
+  const auth = readAuthConfig();
+  const deckId = process.env.WORDUP_DECK_ID;
+  if (!deckId || !String(deckId).trim()) {
+    throw new ConfigError(
+      "Missing WordUp config: deckId. Set WORDUP_DECK_ID in .env or the environment."
+    );
+  }
+  return { ...auth, deckId };
+}
+
+function authHeaders(cfg) {
+  return {
+    "access-token": cfg.accessToken,
+    client: cfg.client,
+    uid: cfg.uid,
+    "content-type": "application/json",
+  };
 }
 
 function buildPayload(entry, deckId) {
@@ -137,19 +158,19 @@ function buildPayload(entry, deckId) {
   };
 }
 
-async function uploadCard(entry) {
-  const cfg = readConfig();
-  const payload = buildPayload(entry, cfg.deckId);
+async function uploadCard(entry, deckId) {
+  const cfg = readAuthConfig();
+  if (!Number.isFinite(deckId)) {
+    throw new ConfigError(
+      "Missing WordUp config: deckId. Set WORDUP_DECK_ID in .env or the environment."
+    );
+  }
+  const payload = buildPayload(entry, deckId);
 
   let res;
   try {
-    res = await axios.post(ENDPOINT, payload, {
-      headers: {
-        "access-token": cfg.accessToken,
-        client: cfg.client,
-        uid: cfg.uid,
-        "content-type": "application/json",
-      },
+    res = await axios.post(CARDS_ENDPOINT, payload, {
+      headers: authHeaders(cfg),
       timeout: 15000,
       validateStatus: () => true,
     });
@@ -168,4 +189,62 @@ async function uploadCard(entry) {
   return res.data;
 }
 
-module.exports = { uploadCard, buildPayload, readConfig, ConfigError, UploadError };
+async function showDeck(deckId) {
+  const cfg = readAuthConfig();
+  let res;
+  try {
+    res = await axios.get(`${DECKS_ENDPOINT}/${deckId}`, {
+      headers: authHeaders(cfg),
+      timeout: 15000,
+      validateStatus: () => true,
+    });
+  } catch (err) {
+    throw new UploadError(`Network error: ${err.message}`, { kind: "network" });
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw new UploadError(`WordUp returned ${res.status}`, {
+      kind: "http",
+      status: res.status,
+      body: res.data,
+    });
+  }
+  return res.data && res.data.deck;
+}
+
+async function createDeck(name) {
+  const cfg = readAuthConfig();
+  let res;
+  try {
+    res = await axios.post(
+      DECKS_ENDPOINT,
+      { name, description: "" },
+      {
+        headers: authHeaders(cfg),
+        timeout: 15000,
+        validateStatus: () => true,
+      }
+    );
+  } catch (err) {
+    throw new UploadError(`Network error: ${err.message}`, { kind: "network" });
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw new UploadError(`WordUp returned ${res.status}`, {
+      kind: "http",
+      status: res.status,
+      body: res.data,
+    });
+  }
+  return res.data && res.data.deck;
+}
+
+module.exports = {
+  uploadCard,
+  showDeck,
+  createDeck,
+  buildPayload,
+  readConfig,
+  readAuthConfig,
+  ConfigError,
+  UploadError,
+  DECK_CARD_LIMIT,
+};

@@ -33,7 +33,8 @@ Fill in `.env`:
 | `WORDUP_ACCESS_TOKEN`  | WordUp API access token                                    |
 | `WORDUP_CLIENT`        | WordUp API `client` header                                 |
 | `WORDUP_UID`           | WordUp API `uid` header                                    |
-| `WORDUP_DECK_ID`       | Target deck ID for uploaded cards                          |
+| `WORDUP_DECK_ID`       | Initial target deck ID for uploaded cards                  |
+| `WORDUP_DECK_NAME_PREFIX` | Prefix for auto-created decks when current deck exceeds 50 cards (e.g. `Vocabulary` → `Vocabulary 20260602`). Leave blank to disable rotation. |
 | `PORT`                 | HTTP port (default `3000`)                                 |
 | `DICTIONARY_LANG`      | Cambridge dictionary variant: `en`, `uk`, `en-tw` (default)|
 
