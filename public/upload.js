@@ -5,8 +5,11 @@ const selectionCountEl = document.getElementById("selection-count");
 const statusEl = document.getElementById("status");
 
 let rows = [];
+let uploading = false;
 const selected = new Set();
 const rowStatus = new Map();
+
+const PENDING_ICON = "⏳";
 
 function showStatus(kind, text) {
   statusEl.hidden = false;
@@ -51,13 +54,22 @@ function render() {
   const body = rows
     .map((row) => {
       const checked = selected.has(row.word) ? "checked" : "";
+      const disabled = uploading ? "disabled" : "";
       const status = rowStatus.get(row.word);
+      const statusIcon =
+        status && status.kind === "pending"
+          ? PENDING_ICON
+          : status && status.kind === "success"
+            ? "✓"
+            : status
+              ? "✗"
+              : "";
       const statusCell = status
-        ? `<span class="row__status--${status.kind}">${status.kind === "success" ? "✓" : "✗"} ${escapeHtml(status.text || "")}</span>`
+        ? `<span class="row__status--${status.kind}">${statusIcon} ${escapeHtml(status.text || "")}</span>`
         : "";
       return `
         <tr data-word="${escapeHtml(row.word)}">
-          <td><input type="checkbox" class="row__check" ${checked} /></td>
+          <td><input type="checkbox" class="row__check" ${checked} ${disabled} /></td>
           <td class="row__word">${escapeHtml(row.word)}</td>
           <td class="row__time">${escapeHtml(fmtTime(row.lookedUpAt))}</td>
           <td class="row__preview">${escapeHtml(row.preview || "")}</td>
@@ -83,6 +95,7 @@ function render() {
 
   const selectAll = document.getElementById("select-all");
   selectAll.checked = rows.length > 0 && rows.every((r) => selected.has(r.word));
+  selectAll.disabled = uploading;
   selectAll.addEventListener("change", () => {
     if (selectAll.checked) {
       rows.forEach((r) => selected.add(r.word));
@@ -107,8 +120,8 @@ function render() {
 
 function updateActionState() {
   const count = selected.size;
-  uploadBtn.disabled = count === 0;
-  deleteBtn.disabled = count === 0;
+  uploadBtn.disabled = uploading || count === 0;
+  deleteBtn.disabled = uploading || count === 0;
   selectionCountEl.textContent = count ? `${count} selected` : "";
 }
 
@@ -153,10 +166,23 @@ async function onDelete() {
   }
 }
 
+function clearPending(words) {
+  for (const w of words) {
+    const s = rowStatus.get(w);
+    if (s && s.kind === "pending") rowStatus.delete(w);
+  }
+}
+
 async function onUpload() {
+  if (uploading) return;
   if (selected.size === 0) return;
   clearStatus();
   const words = [...selected];
+
+  uploading = true;
+  for (const w of words) rowStatus.set(w, { kind: "pending" });
+  showStatus("loading", `Uploading ${words.length} word${words.length === 1 ? "" : "s"} to WordUp…`);
+  render();
 
   try {
     const res = await fetch("/api/upload", {
@@ -166,11 +192,14 @@ async function onUpload() {
     });
     const data = await res.json();
 
+    clearPending(words);
+
     if (data.status === "config_error") {
       showStatus("error", data.message);
       (data.results || []).forEach((r) => {
         rowStatus.set(r.word, { kind: r.status, text: r.error || "" });
       });
+      uploading = false;
       render();
       return;
     }
@@ -178,11 +207,16 @@ async function onUpload() {
     (data.results || []).forEach((r) => {
       rowStatus.set(r.word, { kind: r.status, text: r.error || "" });
     });
+    clearStatus();
+    uploading = false;
     render();
 
     await loadHistory();
   } catch (err) {
+    clearPending(words);
+    uploading = false;
     showStatus("error", `Upload failed: ${err.message}`);
+    render();
   }
 }
 
