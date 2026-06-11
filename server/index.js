@@ -49,10 +49,13 @@ app.get("/api/dictionary/:word", async (req, res) => {
     return res.status(502).json({ status: "error", message: result.message });
   }
 
+  // Key history off the entry's canonical word (base form for verbs) so that
+  // inflected and base lookups (e.g. "spat" and "spit") dedupe to one row.
+  const canonicalWord = result.entry.word || word;
   try {
-    await history.add(word, result.entry);
+    await history.add(canonicalWord, result.entry);
   } catch (err) {
-    console.warn(`Failed to persist history for "${word}":`, err.message);
+    console.warn(`Failed to persist history for "${canonicalWord}":`, err.message);
   }
 
   res.json({ status: "ok", entry: result.entry });

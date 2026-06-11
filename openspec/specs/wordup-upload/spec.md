@@ -19,13 +19,17 @@ For each uploaded word, the system SHALL transform the locally-stored Cambridge 
 #### Scenario: Payload field mapping
 - **WHEN** the system uploads a word
 - **THEN** the request body MUST contain:
-  - `word` set to the Cambridge headword
+  - `word` set to the entry's canonical word — the verb base form for verb entries, otherwise the Cambridge headword (see the `dictionary-lookup` capability's "Resolve verb lookups to their base-form entry")
   - `text_content.explanations[0].translations` set to the deduplicated non-empty translation lines derived from the Cambridge entry's definitions in their original order, where each line is built by prepending the abbreviated part of speech in parentheses followed by a space (e.g. `"(v) to move backwards ..."`) to the trimmed English definition text (`def.text`); definitions with an empty or missing `pos` contribute the bare text with no parenthetical prefix; when the entry qualifies under the irregular-verb rule (see "Prepend an inflection line for irregular verbs"), the inflection summary line is inserted as the first element of this array, before all definition-derived lines
   - `text_content.explanations[0].sentences` set to the flat list of English example texts in their original order, with empty strings dropped, and with NO Chinese example translations interleaved
   - `text_content.explanations[0].word_types` set to the deduplicated non-empty parts of speech (`def.pos`) from the same definitions that contributed translations, in their original order, using the full Cambridge label (e.g. `"verb"`, `"noun"`) — not the abbreviated form
   - `text_content.explanations[0].notes`, `images`, `synonyms` set to empty arrays
   - `force_create` set to `true`
   - `deck_id` set to the configured deck id
+
+#### Scenario: Verb uploaded under its base form
+- **WHEN** the system uploads an entry whose canonical word is the verb base form `spit` (originally searched as `spat`)
+- **THEN** the request body's `word` is `spit`
 
 #### Scenario: Part-of-speech abbreviation mapping
 - **WHEN** a definition has a `pos` value listed in the known abbreviation map

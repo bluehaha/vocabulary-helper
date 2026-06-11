@@ -15,6 +15,18 @@ const httpClient = axios.create({
 
 const cacheKey = (s) => s.replace(/[^a-zA-Z0-9]/g, "_");
 
+// First non-empty "Plain form" (base form) from the scraped verb inflection
+// table, by array order; undefined if none. Mirrors wordup.js findVerbForm.
+const basePlainForm = (verbs) => {
+  for (const v of verbs || []) {
+    if (v && v.type === "Plain form") {
+      const text = (v.text || "").trim();
+      if (text) return text;
+    }
+  }
+  return undefined;
+};
+
 const getCached = (key) => {
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
@@ -196,6 +208,25 @@ async function fetchEntry(word, lang = "en-tw") {
     verbs = await fetchVerbs(wikiUrl);
   } catch {
     verbs = [];
+  }
+
+  // For verbs searched by an inflected form, re-fetch the base form so the
+  // displayed entry is the base form's real content (e.g. "spat" -> look up
+  // "spit", "ran" -> "run"), not Cambridge's inflected-form page (whose
+  // definition is just "past simple and past participle of ..."). The presence
+  // of a Wiktionary "Plain form" row is itself the verb signal — Cambridge's
+  // `pos` is sometimes empty for inflected pages (e.g. "ran"), so we do NOT
+  // gate on it. The recursive call terminates because a base form's own base
+  // form equals itself.
+  const base = basePlainForm(verbs);
+  if (base && base.toLowerCase() !== word.trim().toLowerCase()) {
+    const baseResult = await fetchEntry(base, lang);
+    if (baseResult.status === "ok") {
+      setCached(key, baseResult.entry);
+      return baseResult;
+    }
+    // Base-form lookup failed (not found / error): fall back to the
+    // inflected-form entry we already have rather than failing the search.
   }
 
   const entry = {
