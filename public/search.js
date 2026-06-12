@@ -16,6 +16,55 @@ function clearStatus() {
   statusEl.textContent = "";
 }
 
+// First non-empty `entry.verbs` row of a given type. Mirrors
+// `server/wordup.js#findVerbForm`.
+function findVerbForm(verbs, type) {
+  for (const v of verbs || []) {
+    if (v && v.type === type) {
+      const text = (v.text || "").trim();
+      if (text) return text;
+    }
+  }
+  return undefined;
+}
+
+// Whether `past` is the regular inflection of `base`. Ported verbatim from
+// `server/wordup.js#isRegularPast` — keep in sync; the server is the source
+// of truth.
+function isRegularPast(base, past) {
+  const b = base.toLowerCase();
+  const p = past.toLowerCase();
+  if (p === b + "ed") return true;
+  if (b.endsWith("e") && p === b + "d") return true;
+  if (b.length >= 2 && /[bcdfghjklmnpqrstvwxz]y$/.test(b) && p === b.slice(0, -1) + "ied") return true;
+  if (
+    b.length <= 5 &&
+    /[aeiou][bcdfghjklmnpqrstvz]$/.test(b) &&
+    !/[aeiou]{2}[bcdfghjklmnpqrstvz]$/.test(b) &&
+    p === b + b.slice(-1) + "ed"
+  ) {
+    return true;
+  }
+  return false;
+}
+
+// Header line showing a verb's past tense and past participle. Returns "" for
+// non-verbs (no Past tense / Past participle rows). Irregular verbs get a
+// modifier class so their forms render in bold.
+function verbFormsHtml(entry) {
+  const verbs = entry.verbs || [];
+  const past = findVerbForm(verbs, "Past tense");
+  const pastParticiple = findVerbForm(verbs, "Past participle");
+  if (!past && !pastParticiple) return "";
+
+  const base = findVerbForm(verbs, "Plain form");
+  const irregular = base && past && !isRegularPast(base, past);
+
+  const forms = [past, pastParticiple].filter(Boolean).join(" · ");
+  const cls = irregular ? "entry__verbforms entry__verbforms--irregular" : "entry__verbforms";
+  return `<div class="${cls}">${forms}</div>`;
+}
+
 function renderEntry(entry) {
   statusEl.hidden = true;
   resultEl.hidden = false;
@@ -54,6 +103,7 @@ function renderEntry(entry) {
     <header class="entry__head">
       <h2 class="entry__word">${entry.word}</h2>
       <div class="entry__pos">${(entry.pos || []).join(", ")}</div>
+      ${verbFormsHtml(entry)}
       <div class="entry__pron">${pron}</div>
     </header>
     <div class="result__toolbar">

@@ -63,6 +63,8 @@ button.danger { background: var(--error); color: #fff; }
 .entry__head { margin: 1rem 0 0.5rem; }
 .entry__word { margin: 0; font-size: 1.5rem; }
 .entry__pos { color: var(--muted); font-style: italic; }
+.entry__verbforms { margin-top: 0.25rem; color: var(--muted); font-size: 0.95rem; }
+.entry__verbforms--irregular { font-weight: 700; color: var(--fg); }
 .entry__pron { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.25rem; }
 .pron { font-size: 0.95rem; color: var(--muted); }
 .pron__lang { background: var(--soft); padding: 0 0.4rem; border-radius: 4px; margin-right: 0.25rem; }
