@@ -15,17 +15,14 @@ const httpClient = axios.create({
 
 const cacheKey = (s) => s.replace(/[^a-zA-Z0-9]/g, "_");
 
-// First non-empty "Plain form" (base form) from the scraped verb inflection
-// table, by array order; undefined if none. Mirrors wordup.js findVerbForm.
-const basePlainForm = (verbs) => {
-  for (const v of verbs || []) {
-    if (v && v.type === "Plain form") {
-      const text = (v.text || "").trim();
-      if (text) return text;
-    }
-  }
-  return undefined;
-};
+// Cambridge usage labels that mark a page as an inflected (verb) form of a base
+// word. Used to decide a base-form re-lookup (e.g. "spat" -> "spit").
+const INFLECTED_USAGE = new Set([
+  "past simple of",
+  "past tense of",
+  "past participle of",
+  "past simple and past participle of",
+]);
 
 const getCached = (key) => {
   const hit = cache.get(key);
@@ -162,7 +159,31 @@ const parseEntry = (html) => {
     })
     .get();
 
-  return { word, pos, pronunciation, definition };
+  // Cambridge marks a genuine inflected-form page with a usage label like
+  // "past participle of" on a definition, linking to the base word. That is the
+  // base-form resolution signal (NOT the Wiktionary inflection table, which
+  // also lists real words like the adjective "rugged" as a verb's participle).
+  // baseRef is the linked base word from the FIRST such definition, or "".
+  const baseRef = (() => {
+    let found = "";
+    $(".def-block.ddef_block").each((_, el) => {
+      if (found) return;
+      const $el = $(el);
+      const usage = $el.find(".def.ddef_d.db .usage.dusage").first().text().trim().toLowerCase();
+      if (!INFLECTED_USAGE.has(usage)) return;
+      const $ref = $el.find(".def.ddef_d.db .x.dx").first();
+      let base = $ref.find(".x-h.dx-h").first().text().trim();
+      if (!base) {
+        const href = $ref.find("a[href]").first().attr("href") || "";
+        const seg = href.split("/").filter(Boolean).pop() || "";
+        base = decodeURIComponent(seg).trim();
+      }
+      if (base) found = base;
+    });
+    return found;
+  })();
+
+  return { word, pos, pronunciation, definition, baseRef };
 };
 
 async function fetchEntry(word, lang = "en-tw") {
@@ -213,12 +234,14 @@ async function fetchEntry(word, lang = "en-tw") {
   // For verbs searched by an inflected form, re-fetch the base form so the
   // displayed entry is the base form's real content (e.g. "spat" -> look up
   // "spit", "ran" -> "run"), not Cambridge's inflected-form page (whose
-  // definition is just "past simple and past participle of ..."). The presence
-  // of a Wiktionary "Plain form" row is itself the verb signal — Cambridge's
-  // `pos` is sometimes empty for inflected pages (e.g. "ran"), so we do NOT
-  // gate on it. The recursive call terminates because a base form's own base
-  // form equals itself.
-  const base = basePlainForm(verbs);
+  // definition is just "past simple and past participle of ..."). The signal is
+  // Cambridge's own "past ... of" usage label (parsed.baseRef), NOT the
+  // Wiktionary inflection table — Wiktionary also lists real words like the
+  // adjective "rugged" as a verb participle, which must NOT be resolved.
+  // Cambridge's `pos` is sometimes empty for inflected pages (e.g. "ran"), so
+  // we do NOT gate on it. The recursive call terminates because a base form's
+  // own page carries no inflected-form usage label.
+  const base = parsed.baseRef;
   if (base && base.toLowerCase() !== word.trim().toLowerCase()) {
     const baseResult = await fetchEntry(base, lang);
     if (baseResult.status === "ok") {
